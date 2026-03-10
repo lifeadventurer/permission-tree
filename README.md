@@ -1,6 +1,10 @@
 # Permission Tree
 
-A tree structure that manages permissions and tags, and allows moving subtrees. This project implements a simple permission tree where each node can be public or private and optionally contain tags. When a public subtree is moved to a private node, the entire subtree becomes private. Tags are also inherited from ancestor nodes.
+A tree structure that manages permissions and tags, and allows moving subtrees.
+This project implements a simple permission tree where each node can be public
+or private and optionally contain tags. When a public subtree is moved to a
+private node, the entire subtree becomes private. Tags are also inherited from
+ancestor nodes.
 
 ## Features
 
@@ -14,7 +18,8 @@ A tree structure that manages permissions and tags, and allows moving subtrees. 
 
 ### Prerequisites
 
-Ensure you have [Rust](https://www.rust-lang.org/) installed on your machine. You can install it using `rustup`:
+Ensure you have [Rust](https://www.rust-lang.org/) installed on your machine.
+You can install it using `rustup`:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -22,11 +27,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ### Installation
 
-To use the `permission-tree` library in your project, add it as a dependency in your `Cargo.toml` file:
+To use the `permission-tree` library in your project, add it as a dependency in
+your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-permission_tree = { git = "https://github.com/LifeAdventurer/permission-tree.git" }
+permission_tree = { git = "https://github.com/lifeadventurer/permission-tree.git" }
 ```
 
 ### Usage
@@ -77,4 +83,5 @@ cargo test
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See the [LICENSE](./LICENSE) file for more details.
+This project is licensed under the MIT License.
+See the [LICENSE](./LICENSE) file for more details.
