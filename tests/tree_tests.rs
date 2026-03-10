@@ -1,9 +1,9 @@
-use permission_tree::{Permission, Tree};
+use permission_tree::{Permission, Tree, TreeError};
 
 #[test]
 fn test_add_node() {
     let mut tree = Tree::new();
-    tree.add_node(1, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap();
 
     // Assert that node with ID 1 has been added.
     assert!(tree.get_node(1).is_some());
@@ -14,15 +14,28 @@ fn test_add_node() {
 }
 
 #[test]
+fn test_add_node_rejects_duplicate_id() {
+    let mut tree = Tree::new();
+
+    tree.add_node(1, Permission::Public).unwrap();
+
+    assert_eq!(
+        tree.add_node(1, Permission::Private),
+        Err(TreeError::NodeAlreadyExists(1))
+    );
+    assert_eq!(tree.get_node(1).unwrap().permission, Permission::Public);
+}
+
+#[test]
 fn test_add_tag_to_node() {
     let mut tree = Tree::new();
-    tree.add_node(1, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap();
 
     // Initially no tags.
     assert!(tree.get_node(1).unwrap().tags.is_none());
 
     // Add a tag.
-    tree.add_tag_to_node(1, "root_tag".to_string());
+    tree.add_tag_to_node(1, "root_tag".to_string()).unwrap();
 
     // Now, node should have tags.
     let node = tree.get_node(1).unwrap();
@@ -32,18 +45,28 @@ fn test_add_tag_to_node() {
 }
 
 #[test]
+fn test_add_tag_to_missing_node_returns_error() {
+    let mut tree = Tree::new();
+
+    assert_eq!(
+        tree.add_tag_to_node(99, "missing".to_string()),
+        Err(TreeError::NodeNotFound(99))
+    );
+}
+
+#[test]
 fn test_tags_inheritance_on_connect() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // parent node
-    tree.add_node(2, Permission::Public); // child node
+    tree.add_node(1, Permission::Public).unwrap(); // parent node
+    tree.add_node(2, Permission::Public).unwrap(); // child node
 
     // Add a tag to the parent node.
-    tree.add_tag_to_node(1, "parent_tag".to_string());
+    tree.add_tag_to_node(1, "parent_tag".to_string()).unwrap();
 
     // Connect nodes; child should inherit parent's tag.
-    tree.connect_nodes(1, 2);
+    tree.connect_nodes(1, 2).unwrap();
 
     let child_tags = tree.get_node(2).unwrap().tags.as_ref().unwrap();
     assert!(child_tags.contains("parent_tag"));
@@ -54,15 +77,15 @@ fn test_tags_inheritance_with_existing_child_tags() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // parent node
-    tree.add_node(2, Permission::Public); // child node
+    tree.add_node(1, Permission::Public).unwrap(); // parent node
+    tree.add_node(2, Permission::Public).unwrap(); // child node
 
     // Add tags to both parent and child.
-    tree.add_tag_to_node(1, "parent_tag".to_string());
-    tree.add_tag_to_node(2, "child_tag".to_string());
+    tree.add_tag_to_node(1, "parent_tag".to_string()).unwrap();
+    tree.add_tag_to_node(2, "child_tag".to_string()).unwrap();
 
     // Connect nodes; child's tags should be the union of its own and the parent's.
-    tree.connect_nodes(1, 2);
+    tree.connect_nodes(1, 2).unwrap();
 
     let child_tags = tree.get_node(2).unwrap().tags.as_ref().unwrap();
     assert!(child_tags.contains("parent_tag"));
@@ -74,21 +97,21 @@ fn test_tags_in_move_subtree() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // root node
-    tree.add_node(2, Permission::Public);
-    tree.add_node(3, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap(); // root node
+    tree.add_node(2, Permission::Public).unwrap();
+    tree.add_node(3, Permission::Public).unwrap();
 
     // Connect nodes: 1->2 and 1->3.
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(1, 3);
+    tree.connect_nodes(1, 2).unwrap();
+    tree.connect_nodes(1, 3).unwrap();
 
     // Add a tag to node 3 (the new parent)
-    tree.add_tag_to_node(3, "new_parent_tag".to_string());
+    tree.add_tag_to_node(3, "new_parent_tag".to_string()).unwrap();
     // Also add a tag to node 2 (child)
-    tree.add_tag_to_node(2, "child_tag".to_string());
+    tree.add_tag_to_node(2, "child_tag".to_string()).unwrap();
 
     // Move subtree: move node 2 to be a child of node 3.
-    tree.move_subtree(2, 3);
+    tree.move_subtree(2, 3).unwrap();
 
     // After moving, node 2 should have both its own tag and inherit node 3's tag.
     let child_tags = tree.get_node(2).unwrap().tags.as_ref().unwrap();
@@ -101,24 +124,24 @@ fn test_connect_nodes() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // root node
-    tree.add_node(2, Permission::Private);
-    tree.add_node(3, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap(); // root node
+    tree.add_node(2, Permission::Private).unwrap();
+    tree.add_node(3, Permission::Public).unwrap();
 
     // Connecting nodes
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(1, 3);
+    tree.connect_nodes(1, 2).unwrap();
+    tree.connect_nodes(1, 3).unwrap();
 
     // Check if the connections are established correctly
     assert!(tree.get_node(1).unwrap().children.contains(&2));
     assert!(tree.get_node(1).unwrap().children.contains(&3));
 
     // Attempt to connect a node to itself (should fail)
-    tree.connect_nodes(1, 1);
+    assert_eq!(tree.connect_nodes(1, 1), Err(TreeError::CannotParentSelf));
     assert!(!tree.get_node(1).unwrap().children.contains(&1));
 
     // Attempt to connect node 2 to node 3, which should fail
-    tree.connect_nodes(2, 3);
+    assert_eq!(tree.connect_nodes(2, 3), Err(TreeError::ChildAlreadyHasParent(3)));
     assert!(!tree.get_node(2).unwrap().children.contains(&3));
     assert_eq!(tree.parent_of(3), Some(1));
 }
@@ -127,11 +150,11 @@ fn test_connect_nodes() {
 fn test_connect_nodes_rejects_cycle() {
     let mut tree = Tree::new();
 
-    tree.add_node(1, Permission::Public);
-    tree.add_node(2, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap();
+    tree.add_node(2, Permission::Public).unwrap();
 
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(2, 1);
+    tree.connect_nodes(1, 2).unwrap();
+    assert_eq!(tree.connect_nodes(2, 1), Err(TreeError::WouldCreateCycle));
 
     assert!(tree.get_node(1).unwrap().children.contains(&2));
     assert!(!tree.get_node(2).unwrap().children.contains(&1));
@@ -143,23 +166,23 @@ fn test_permission_inheritance() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // root node
-    tree.add_node(2, Permission::Public);
-    tree.add_node(3, Permission::Private); // private node
-    tree.add_node(4, Permission::Public);
-    tree.add_node(5, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap(); // root node
+    tree.add_node(2, Permission::Public).unwrap();
+    tree.add_node(3, Permission::Private).unwrap(); // private node
+    tree.add_node(4, Permission::Public).unwrap();
+    tree.add_node(5, Permission::Public).unwrap();
 
     // Connecting nodes
-    tree.connect_nodes(1, 3);
-    tree.connect_nodes(2, 4);
-    tree.connect_nodes(2, 5);
+    tree.connect_nodes(1, 3).unwrap();
+    tree.connect_nodes(2, 4).unwrap();
+    tree.connect_nodes(2, 5).unwrap();
 
     // Before the connection, node 4 and node 5 should be public
     assert_eq!(tree.get_node(4).unwrap().permission, Permission::Public);
     assert_eq!(tree.get_node(5).unwrap().permission, Permission::Public);
 
     // Connecting node 2 (public) as a child of node 3 (private)
-    tree.connect_nodes(3, 2);
+    tree.connect_nodes(3, 2).unwrap();
 
     // After connection, node 2 and all its descendants (4, 5) should become private
     assert_eq!(tree.get_node(2).unwrap().permission, Permission::Private);
@@ -172,15 +195,15 @@ fn test_is_descendant() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // root node
-    tree.add_node(2, Permission::Public);
-    tree.add_node(3, Permission::Public);
-    tree.add_node(4, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap(); // root node
+    tree.add_node(2, Permission::Public).unwrap();
+    tree.add_node(3, Permission::Public).unwrap();
+    tree.add_node(4, Permission::Public).unwrap();
 
     // Connecting nodes
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(2, 3);
-    tree.connect_nodes(3, 4);
+    tree.connect_nodes(1, 2).unwrap();
+    tree.connect_nodes(2, 3).unwrap();
+    tree.connect_nodes(3, 4).unwrap();
 
     // Test if node 4 is a descendant of node 1
     assert!(tree.is_descendant(1, 4));
@@ -196,20 +219,20 @@ fn test_move_subtree() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // root node
-    tree.add_node(2, Permission::Public);
-    tree.add_node(3, Permission::Private); // private node
-    tree.add_node(4, Permission::Public);
-    tree.add_node(5, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap(); // root node
+    tree.add_node(2, Permission::Public).unwrap();
+    tree.add_node(3, Permission::Private).unwrap(); // private node
+    tree.add_node(4, Permission::Public).unwrap();
+    tree.add_node(5, Permission::Public).unwrap();
 
     // Connecting nodes
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(1, 3);
-    tree.connect_nodes(2, 4);
-    tree.connect_nodes(2, 5);
+    tree.connect_nodes(1, 2).unwrap();
+    tree.connect_nodes(1, 3).unwrap();
+    tree.connect_nodes(2, 4).unwrap();
+    tree.connect_nodes(2, 5).unwrap();
 
     // Move subtree rooted at node 2 under node 3 (private)
-    tree.move_subtree(2, 3);
+    tree.move_subtree(2, 3).unwrap();
 
     // After moving, nodes 2, 4, and 5 should inherit private permission from node 3
     assert_eq!(tree.get_node(2).unwrap().permission, Permission::Private);
@@ -222,18 +245,18 @@ fn test_move_subtree_invalid() {
     let mut tree = Tree::new();
 
     // Adding nodes
-    tree.add_node(1, Permission::Public); // root node
-    tree.add_node(2, Permission::Public);
-    tree.add_node(3, Permission::Private); // private node
-    tree.add_node(4, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap(); // root node
+    tree.add_node(2, Permission::Public).unwrap();
+    tree.add_node(3, Permission::Private).unwrap(); // private node
+    tree.add_node(4, Permission::Public).unwrap();
 
     // Connecting nodes
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(2, 3);
-    tree.connect_nodes(3, 4);
+    tree.connect_nodes(1, 2).unwrap();
+    tree.connect_nodes(2, 3).unwrap();
+    tree.connect_nodes(3, 4).unwrap();
 
     // Try to move node 3 under node 4, which is its descendant (should fail).
-    tree.move_subtree(3, 4);
+    assert_eq!(tree.move_subtree(3, 4), Err(TreeError::WouldCreateCycle));
 
     // After moving, nodes 2, 4, and 5 should inherit private permission from node 3.
     assert!(tree.get_node(2).unwrap().children.contains(&3));
@@ -244,11 +267,11 @@ fn test_move_subtree_invalid() {
 fn test_move_subtree_rejects_self_parent() {
     let mut tree = Tree::new();
 
-    tree.add_node(1, Permission::Public);
-    tree.add_node(2, Permission::Public);
+    tree.add_node(1, Permission::Public).unwrap();
+    tree.add_node(2, Permission::Public).unwrap();
 
-    tree.connect_nodes(1, 2);
-    tree.move_subtree(2, 2);
+    tree.connect_nodes(1, 2).unwrap();
+    assert_eq!(tree.move_subtree(2, 2), Err(TreeError::CannotMoveUnderSelf));
 
     assert!(tree.get_node(1).unwrap().children.contains(&2));
     assert!(!tree.get_node(2).unwrap().children.contains(&2));

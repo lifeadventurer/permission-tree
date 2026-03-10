@@ -37,39 +37,43 @@ permission_tree = { git = "https://github.com/lifeadventurer/permission-tree.git
 
 ### Usage
 
-Here's a quick example of how to use the `permission_tree` in your code:
+Here's a quick example of how to use `permission_tree` in your code. The
+mutation APIs return `Result<(), TreeError>`, so callers can either propagate
+errors with `?` or handle them explicitly.
 
 ```rs
-use permission_tree::{Permission, Tree};
+use permission_tree::{Permission, Tree, TreeError};
 
-fn main() {
+fn main() -> Result<(), TreeError> {
     let mut tree = Tree::new();
 
     // Add nodes with permission
-    tree.add_node(1, Permission::Public);
-    tree.add_node(2, Permission::Public);
-    tree.add_node(3, Permission::Private);
-    tree.add_node(4, Permission::Public);
-    tree.add_node(5, Permission::Public);
+    tree.add_node(1, Permission::Public)?;
+    tree.add_node(2, Permission::Public)?;
+    tree.add_node(3, Permission::Private)?;
+    tree.add_node(4, Permission::Public)?;
+    tree.add_node(5, Permission::Public)?;
 
     // Add tags
-    tree.add_tag_to_node(1, "root".to_string());
-    tree.add_tag_to_node(2, "important".to_string());
+    tree.add_tag_to_node(1, "root".to_string())?;
+    tree.add_tag_to_node(2, "important".to_string())?;
 
     // Connect nodes
-    tree.connect_nodes(1, 2);
-    tree.connect_nodes(1, 3);
-    tree.connect_nodes(2, 4);
-    tree.connect_nodes(2, 5);
+    tree.connect_nodes(1, 2)?;
+    tree.connect_nodes(1, 3)?;
+    tree.connect_nodes(2, 4)?;
+    tree.connect_nodes(2, 5)?;
 
     println!("Initial tree:");
     println!("{}", tree.print_tree(1, 0));
 
     // Move a subtree (2 and its children) under a private node (3)
-    tree.move_subtree(2, 3);
+    tree.move_subtree(2, 3)?;
 
     println!("\nTree after moving subtree rooted at node 2 under node 3:");
     println!("{}", tree.print_tree(1, 0));
+
+    Ok(())
 }
 ```
 

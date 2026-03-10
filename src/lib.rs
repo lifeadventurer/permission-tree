@@ -6,6 +6,16 @@ pub enum Permission {
     Private,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeError {
+    NodeAlreadyExists(u32),
+    NodeNotFound(u32),
+    ChildAlreadyHasParent(u32),
+    CannotParentSelf,
+    CannotMoveUnderSelf,
+    WouldCreateCycle,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct TreeNode {
     pub id: u32,
@@ -37,10 +47,9 @@ impl Tree {
     }
 
     // Add a node with permission to the tree. Tags are set to None initially
-    pub fn add_node(&mut self, id: u32, permission: Permission) {
+    pub fn add_node(&mut self, id: u32, permission: Permission) -> Result<(), TreeError> {
         if self.nodes.contains_key(&id) {
-            println!("Node with ID {} already exists", id);
-            return;
+            return Err(TreeError::NodeAlreadyExists(id));
         }
         self.nodes.insert(
             id,
@@ -51,11 +60,11 @@ impl Tree {
                 tags: None,
             },
         );
-        println!("Node with ID {} added with {:?} permission", id, permission);
+        Ok(())
     }
 
     // Add a tag to a node; initialize tags if they are None.
-    pub fn add_tag_to_node(&mut self, id: u32, tag: String) {
+    pub fn add_tag_to_node(&mut self, id: u32, tag: String) -> Result<(), TreeError> {
         if let Some(node) = self.nodes.get_mut(&id) {
             match &mut node.tags {
                 Some(tags) => {
@@ -69,45 +78,46 @@ impl Tree {
             }
             // Optionally, update tags for the subtree to reflect inherited changes.
             self.update_tags(id);
+            Ok(())
         } else {
-            println!("Node with ID {} does not exist", id);
+            Err(TreeError::NodeNotFound(id))
         }
     }
 
     // Connect two nodes, making `parent_id` the parent of `child_id`
-    pub fn connect_nodes(&mut self, parent_id: u32, child_id: u32) {
-        if !self.nodes.contains_key(&parent_id) || !self.nodes.contains_key(&child_id) {
-            println!("Either parent or child node doesn't exist");
-            return;
+    pub fn connect_nodes(&mut self, parent_id: u32, child_id: u32) -> Result<(), TreeError> {
+        if !self.nodes.contains_key(&parent_id) {
+            return Err(TreeError::NodeNotFound(parent_id));
+        }
+
+        if !self.nodes.contains_key(&child_id) {
+            return Err(TreeError::NodeNotFound(child_id));
         }
 
         // Check if the parent ID and child ID are the same
         if parent_id == child_id {
-            println!("A node cannot be its own parent");
-            return;
+            return Err(TreeError::CannotParentSelf);
         }
 
         // Reject edges that would introduce a cycle.
         if self.is_descendant(child_id, parent_id) {
-            println!("Cannot create a cycle in the tree");
-            return;
+            return Err(TreeError::WouldCreateCycle);
         }
 
         // Check if the child already has a parent
         if self.parent_map.contains_key(&child_id) {
-            println!("Node {} already has a parent", child_id);
-            return;
+            return Err(TreeError::ChildAlreadyHasParent(child_id));
         }
 
         if let Some(parent_node) = self.nodes.get_mut(&parent_id) {
             parent_node.children.insert(child_id);
             self.parent_map.insert(child_id, parent_id);
-            println!("Node {} connected as child of {}", child_id, parent_id);
         }
 
         // Update both permission and tags to inherit from the parent
         self.update_permission(child_id);
         self.update_tags(child_id);
+        Ok(())
     }
 
     pub fn is_descendant(&self, node_id: u32, potential_descendant_id: u32) -> bool {
@@ -126,21 +136,22 @@ impl Tree {
     }
 
     // Move a subtree rooted at `node_id` under `new_parent_id`
-    pub fn move_subtree(&mut self, node_id: u32, new_parent_id: u32) {
-        if !self.nodes.contains_key(&node_id) || !self.nodes.contains_key(&new_parent_id) {
-            println!("Either node or new parent doesn't exist");
-            return;
+    pub fn move_subtree(&mut self, node_id: u32, new_parent_id: u32) -> Result<(), TreeError> {
+        if !self.nodes.contains_key(&node_id) {
+            return Err(TreeError::NodeNotFound(node_id));
+        }
+
+        if !self.nodes.contains_key(&new_parent_id) {
+            return Err(TreeError::NodeNotFound(new_parent_id));
         }
 
         if node_id == new_parent_id {
-            println!("A node cannot be moved under itself");
-            return;
+            return Err(TreeError::CannotMoveUnderSelf);
         }
 
         // Prevent moving a node into its own subtree
         if self.is_descendant(node_id, new_parent_id) {
-            println!("Cannot move a node into its own subtree");
-            return;
+            return Err(TreeError::WouldCreateCycle);
         }
 
         // Find the current parent of `node_id`
@@ -161,10 +172,7 @@ impl Tree {
         self.update_permission(node_id);
         self.update_tags(node_id);
 
-        println!(
-            "Moved subtree rooted at node {} to new parent node {}",
-            node_id, new_parent_id
-        );
+        Ok(())
     }
 
     // Recursively update the permission of a node and its subtree.
