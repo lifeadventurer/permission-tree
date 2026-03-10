@@ -115,11 +115,11 @@ fn test_connect_nodes() {
 
     // Attempt to connect a node to itself (should fail)
     tree.connect_nodes(1, 1);
-    assert_eq!(tree.nodes.get(&1).unwrap().children.contains(&1), false);
+    assert!(!tree.nodes.get(&1).unwrap().children.contains(&1));
 
     // Attempt to connect node 2 to node 3, which should fail
     tree.connect_nodes(2, 3);
-    assert_eq!(tree.nodes.get(&2).unwrap().children.contains(&3), false);
+    assert!(!tree.nodes.get(&2).unwrap().children.contains(&3));
     assert_eq!(tree.parent_map.get(&3), Some(&1));
 }
 

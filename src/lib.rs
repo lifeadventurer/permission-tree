@@ -14,7 +14,7 @@ pub struct TreeNode {
     pub tags: Option<HashSet<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Tree {
     pub nodes: HashMap<u32, TreeNode>,
     pub parent_map: HashMap<u32, u32>, // Keeps track of parent-child relationships
