@@ -79,6 +79,12 @@ impl Tree {
             return;
         }
 
+        // Reject edges that would introduce a cycle.
+        if self.is_descendant(child_id, parent_id) {
+            println!("Cannot create a cycle in the tree");
+            return;
+        }
+
         // Check if the child already has a parent
         if self.parent_map.contains_key(&child_id) {
             println!("Node {} already has a parent", child_id);
@@ -115,6 +121,11 @@ impl Tree {
     pub fn move_subtree(&mut self, node_id: u32, new_parent_id: u32) {
         if !self.nodes.contains_key(&node_id) || !self.nodes.contains_key(&new_parent_id) {
             println!("Either node or new parent doesn't exist");
+            return;
+        }
+
+        if node_id == new_parent_id {
+            println!("A node cannot be moved under itself");
             return;
         }
 

@@ -124,6 +124,21 @@ fn test_connect_nodes() {
 }
 
 #[test]
+fn test_connect_nodes_rejects_cycle() {
+    let mut tree = Tree::new();
+
+    tree.add_node(1, Permission::Public);
+    tree.add_node(2, Permission::Public);
+
+    tree.connect_nodes(1, 2);
+    tree.connect_nodes(2, 1);
+
+    assert!(tree.nodes.get(&1).unwrap().children.contains(&2));
+    assert!(!tree.nodes.get(&2).unwrap().children.contains(&1));
+    assert_eq!(tree.parent_map.get(&1), None);
+}
+
+#[test]
 fn test_permission_inheritance() {
     let mut tree = Tree::new();
 
@@ -173,7 +188,7 @@ fn test_is_descendant() {
     assert!(tree.is_descendant(1, 3));
 
     // Test if node 2 is not a descendant of node 4
-    assert!(tree.is_descendant(1, 2));
+    assert!(!tree.is_descendant(4, 2));
 }
 
 #[test]
@@ -223,4 +238,19 @@ fn test_move_subtree_invalid() {
     // After moving, nodes 2, 4, and 5 should inherit private permission from node 3.
     assert!(tree.nodes.get(&2).unwrap().children.contains(&3));
     assert!(!tree.nodes.get(&4).unwrap().children.contains(&3));
+}
+
+#[test]
+fn test_move_subtree_rejects_self_parent() {
+    let mut tree = Tree::new();
+
+    tree.add_node(1, Permission::Public);
+    tree.add_node(2, Permission::Public);
+
+    tree.connect_nodes(1, 2);
+    tree.move_subtree(2, 2);
+
+    assert!(tree.nodes.get(&1).unwrap().children.contains(&2));
+    assert!(!tree.nodes.get(&2).unwrap().children.contains(&2));
+    assert_eq!(tree.parent_map.get(&2), Some(&1));
 }
