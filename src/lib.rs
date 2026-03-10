@@ -16,8 +16,8 @@ pub struct TreeNode {
 
 #[derive(Debug, Default)]
 pub struct Tree {
-    pub nodes: HashMap<u32, TreeNode>,
-    pub parent_map: HashMap<u32, u32>, // Keeps track of parent-child relationships
+    nodes: HashMap<u32, TreeNode>,
+    parent_map: HashMap<u32, u32>, // Keeps track of parent-child relationships
 }
 
 impl Tree {
@@ -26,6 +26,14 @@ impl Tree {
             nodes: HashMap::new(),
             parent_map: HashMap::new(),
         }
+    }
+
+    pub fn get_node(&self, id: u32) -> Option<&TreeNode> {
+        self.nodes.get(&id)
+    }
+
+    pub fn parent_of(&self, id: u32) -> Option<u32> {
+        self.parent_map.get(&id).copied()
     }
 
     // Add a node with permission to the tree. Tags are set to None initially
